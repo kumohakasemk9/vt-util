@@ -532,7 +532,7 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 
 	public void draw() {
 		if(ScrCap != null) {
-			GScr.drawImage(ScrCap, 0, 0, this);
+			GScr.drawImage(ScrCap, 0, 0, ScrBuf.getWidth(), ScrBuf.getHeight(), this);
 		} else {
 			GScr.setColor(Color.black);
 			GScr.fillRect(0, 0, ScrBuf.getWidth(), ScrBuf.getHeight() );
