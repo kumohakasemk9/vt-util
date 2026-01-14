@@ -667,11 +667,11 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 				}
 			}
 		}
-		/*
 		if(isIDValid(ResizeMode) ) {
 			ELEMs[ResizeMode].w = MouseX - ELEMs[ResizeMode].x;
 			ELEMs[ResizeMode].h = MouseY - ELEMs[ResizeMode].y;
 		}
+		/*
 		if(VTResizeMode != null) {
 			double wd = (double)ELEMs[VTBodyID].w / (double)ELEMs[VTBodyID].img.getWidth();
 			double  hd = (double)ELEMs[VTBodyID].h / (double)ELEMs[VTBodyID].img.getHeight();
