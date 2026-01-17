@@ -502,7 +502,7 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 					return;
 				}
 				int i = Integer.parseInt(param);
-				if(0 <= i && i <= TELEMs.length) {
+				if(0 <= i && i <= TELEMs.length - 1) {
 					TELEMs[i] = null;
 				}
 			} else if(cmd.equals(":moveText") ) {
@@ -512,7 +512,7 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 					return;
 				}
 				int i = Integer.parseInt(param);
-				if(0 <= i && i <= TELEMs.length && TELEMs[i] != null) {
+				if(0 <= i && i <= TELEMs.length - 1 && TELEMs[i] != null) {
 					TELEMs[i].x = MouseX;
 					int _y = MouseY;
 					if(_y < 10) { _y = 10;}
@@ -534,7 +534,7 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 					return;
 				}
 				int i = Integer.parseInt(_p[0]);
-				if(0 <= i && i <= TELEMs.length && TELEMs[i] != null) {
+				if(0 <= i && i <= TELEMs.length - 1 && TELEMs[i] != null) {
 					int fdsp = param.indexOf(" ");
 					TELEMs[i].fn = param.substring(fdsp + 1).strip();
 				} else {
