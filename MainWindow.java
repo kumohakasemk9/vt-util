@@ -11,6 +11,7 @@ import java.awt.image.*;
 import javax.sound.sampled.*;
 import javax.imageio.*;
 import java.io.*;
+import java.time.*;
 
 public class MainWindow extends JFrame implements ActionListener, MouseMotionListener, KeyListener {
 	public static void main(String[] args) {
@@ -46,6 +47,9 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 	int StatusRemain;
 	int ScrW;
 	int ScrH;
+	final Font FONT_INFO;
+	final String DEFAULT_FONT;
+	TextElements TELEMs[];
 	public MainWindow() {
 		super("Broadcast window");
 		try {
@@ -79,6 +83,9 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 		MouseX = 0;
 		MouseY = 0;
 		ELEMs = new ImageElements[0];
+		TELEMs = new TextElements[0];
+		DEFAULT_FONT = "Ubuntu Mono";
+		FONT_INFO = new Font(DEFAULT_FONT, Font.PLAIN, 18);
 		try {
 			BufferedReader br = new BufferedReader(new FileReader("settings.ini") );
 			String sec = "";
@@ -122,6 +129,26 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 					} catch(IllegalArgumentException ex2) {
 						System.out.printf("Error at line %d: %s\n", lineno, ex2.getMessage() );
 					}
+				} else if(sec.equals("[Texts]") ) {
+					String s[] = divideString(line, '=');
+					int txx = 10, txy = 10, txs = 20;
+					if(s != null) {
+						String[] poss = s[0].split(",");
+						if(poss.length == 3) {
+							try {
+								txx = Integer.parseInt(poss[0]);
+								txy = Integer.parseInt(poss[1]);
+								txs = Integer.parseInt(poss[2]);
+							} catch(NumberFormatException ex2) {
+								System.out.printf("Text coordinate or size parse failed: %s at line %d\n", ex2.getMessage(), lineno);
+							}
+						}
+					}
+					String txctx = line;
+					if(s != null) {
+						txctx = s[1];
+					}
+					addText(txctx, txx, txy, txs);
 				}
 			}
 			br.close();
@@ -137,7 +164,6 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 		setVisible(true);
 		ScrBuf = new BufferedImage(ScrW, ScrH, BufferedImage.TYPE_INT_ARGB);
 		GScr = ScrBuf.createGraphics();
-		GScr.setFont( new Font("Ubuntu Mono", Font.PLAIN, 18) );
 		GScr.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		PPanel = new JPanel() {
 			public void paint(Graphics g) {
@@ -399,35 +425,37 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 			if(cmd.equals(":set") ) {
 				if(param == null) {
 					System.out.println("Option required.");
-					statusUpd("Option required");
+					statusUpd("Please specify option=value.");
 					return;
 				}
 				setSetting(param);
 			} else if(cmd.equals(":move") ) {
 				if(param == null) {
 					System.out.println("Option required.");
-					statusUpd("Option required");
+					statusUpd("Please specify Image ID to move.");
 					return;
 				}
 				MoveMode = parseItemID(param);
 			} else if(cmd.equals(":resize") ) {
 				if(param == null) {
 					System.out.println("Option required.");
-					statusUpd("Option required");
+					statusUpd("Please specify Image ID to resize.");
 					return;
 				}
 				ResizeMode = parseItemID(param);
 			} else if(cmd.equals(":load") ) {
 				if(param == null) {
 					System.out.println("Option required.");
-					statusUpd("Option required");
+					statusUpd("Please specify image filename.");
 					return;
 				}
 				int i = loadNewImg(param, 10, 10, 0, 0);
+				String s = String.format("Added image as ID%d", i);
+				statusUpd(s);
 			} else if(cmd.equals(":query") ) {
 				if(param == null) {
 					System.out.println("Option required.");
-					statusUpd("Option required");
+					statusUpd("Please specify image ID.");
 					return;
 				}
 				int i = parseItemID(param);
@@ -436,7 +464,7 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 			} else if(cmd.equals(":resetsize") ) {
 				if(param == null) {
 					System.out.println("Option required.");
-					statusUpd("Option required");
+					statusUpd("Please specify image ID to reset size.");
 					return;
 				}
 				int i = parseItemID(param);
@@ -445,7 +473,7 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 			} else if(cmd.equals(":toggle") ) {
 				if(param == null) {
 					System.out.println("Option required.");
-					statusUpd("Option required");
+					statusUpd("Please specify image ID to toggle visibility.");
 					return;
 				}
 				int i = parseItemID(param);
@@ -458,6 +486,85 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 				saveopt();
 				statusUpd("Saved config");
 				System.out.println("Saved config");
+			} else if(cmd.equals(":addText") ) {
+				if(param == null || param.strip() == "") {
+					System.out.println("This command need parameter.");
+					statusUpd("Please specify text.");
+					return;
+				}
+				int i = addText(param, 0, 0, 0);
+				String s = String.format("Text added as ID%d", i);
+				statusUpd(s);
+			} else if(cmd.equals(":delText") ) {
+				if(param == null) {
+					System.out.println("This command need parameter.");
+					statusUpd("Please specify text ID.");
+					return;
+				}
+				int i = Integer.parseInt(param);
+				if(0 <= i && i <= TELEMs.length) {
+					TELEMs[i] = null;
+				}
+			} else if(cmd.equals(":moveText") ) {
+				if(param == null) {
+					System.out.println("This command need parameter.");
+					statusUpd("Please specify text ID to move to cursor ID.");
+					return;
+				}
+				int i = Integer.parseInt(param);
+				if(0 <= i && i <= TELEMs.length && TELEMs[i] != null) {
+					TELEMs[i].x = MouseX;
+					int _y = MouseY;
+					if(_y < 10) { _y = 10;}
+					TELEMs[i].y = MouseY;
+				} else {
+					System.out.println("Please specify valid text ID");
+					statusUpd("Bad TextID");
+				}
+			} else if(cmd.equals(":fontText") ) {
+				if(param == null) {
+					System.out.println("This command need parameter.");
+					statusUpd("Please specify text ID and textFont.");
+					return;
+				}
+				String _p[] = param.split(" ");
+				if(_p.length < 2) {
+					System.out.println("Bad param.");
+					statusUpd("Bad param");
+					return;
+				}
+				int i = Integer.parseInt(_p[0]);
+				if(0 <= i && i <= TELEMs.length && TELEMs[i] != null) {
+					int fdsp = param.indexOf(" ");
+					TELEMs[i].fn = param.substring(fdsp + 1).strip();
+				} else {
+					System.out.println("Please specify valid text ID");
+					statusUpd("Bad TextID");
+				}
+
+			} else if(cmd.equals(":sizeText") ) {
+				if(param == null) {
+					System.out.println("This command need parameter.");
+					statusUpd("Please specify text ID and textSize.");
+					return;
+				}
+				String _p[] = param.split(" ");
+				if(_p.length < 2) {
+					System.out.println("Bad param.");
+					statusUpd("Bad param");
+					return;
+				}
+				int i = Integer.parseInt(_p[0]);
+				int s = Integer.parseInt(_p[1]);
+				if(0 <= i && i <= TELEMs.length && TELEMs[i] != null) {
+					TELEMs[i].s = s;
+				} else {
+					System.out.println("Please specify valid text ID");
+					statusUpd("Bad TextID");
+				}
+			} else if(cmd.equals(":getTZs") ) {
+				java.util.Set<String> zids = ZoneId.getAvailableZoneIds();
+				System.out.println(zids.toString() );
 			} else {
 				statusUpd("Not implemented.");
 				System.out.println("Not implemented.");
@@ -471,12 +578,37 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 		}
 	}
 
+	public int addText(String p, int x, int y, int s) {
+		int r = -1;
+		for(int i = 0; i < TELEMs.length; i++) {
+			if(TELEMs[i] == null) {
+				r = i;
+				break;
+			}
+		}
+		if(r == -1) {
+			TextElements tt[] = TELEMs.clone();
+			TELEMs = new TextElements[tt.length + 1];
+			System.arraycopy(tt, 0, TELEMs, 0, tt.length);
+			r = tt.length;
+		}
+		TELEMs[r] = new TextElements(p, x, y, s);
+		System.out.printf("[%d] Loading text %s (+%d,%d %d)\n", r, TELEMs[r].txt, TELEMs[r].x, TELEMs[r].y, TELEMs[r].s);
+		return r;
+	}
+
 	public void saveopt() throws IOException {
 		BufferedWriter bw = new BufferedWriter(new FileWriter("settings.ini") );
 		bw.write("[Images]\n");
 		for(ImageElements i : ELEMs) {
 			if(i == null) { continue; }
 			bw.write(String.format("%d,%d,%d,%d=%s\n", i.x, i.y, i.w, i.h, i.fn) );
+		}
+		bw.newLine();
+		bw.write("[Texts]\n");
+		for(TextElements i : TELEMs) {
+			if(i == null) {continue;}
+			bw.write(String.format("%d,%d,%d=%s\n", i.x, i.y, i.s, i.txt) );
 		}
 		bw.newLine();
 		bw.write("[Settings]\n");
@@ -598,6 +730,27 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 			}
 			GScr.fillRect(_x, _y, _w, _h);
 		}
+		for(int i = 0; i < TELEMs.length; i++) {
+			if(TELEMs[i] == null) {continue;}
+			String _t = TELEMs[i].txt;
+			if(_t.equals("[[TIME]]") ) {
+				_t = getTimeString();
+			} else if(_t.startsWith("[[TIME:") && _t.endsWith("]]") ) {
+				_t = getTimeString(_t.substring(7,_t.length() - 2) );
+			}
+			String fn = TELEMs[i].fn;
+			if(fn == null) { fn = DEFAULT_FONT; }
+			GScr.setFont(new Font(fn, Font.PLAIN, TELEMs[i].s) );
+			FontMetrics fme = GScr.getFontMetrics();
+			int fhe = fme.getMaxAscent() + fme.getMaxDecent();
+			GScr.setColor(Color.black);
+			GScr.fillRect(TELEMs[i].x, TELEMs[i].y - fhe, fme.stringWidth(_t) + 2, fhe + 2);
+			GScr.setColor(Color.green);
+			GScr.drawString(_t, TELEMs[i].x - 1, TELEMs[i].y - 1);
+			GScr.setColor(Color.white);
+			GScr.drawString(_t, TELEMs[i].x, TELEMs[i].y);
+		}
+		GScr.setFont(FONT_INFO);
 		FontMetrics fm = GScr.getFontMetrics();
 		int fh = fm.getMaxAscent() + fm.getMaxDecent();
 		if(DebugMode == 1) {
@@ -638,6 +791,22 @@ public class MainWindow extends JFrame implements ActionListener, MouseMotionLis
 			GScr.drawString(StatusBuf, 0, ScrBuf.getHeight() - fm.getMaxDecent() );
 		}
 	}
+	
+	public String getTimeString() {
+		LocalTime t = LocalTime.now();
+		return String.format("%02d:%02d", t.getHour(), t.getMinute() );
+	}
+
+	public String getTimeString(String zonetag) {
+		LocalTime t;
+		try {
+			t = LocalTime.now(ZoneId.of(zonetag) );
+		} catch(Exception ex) {
+			return ex.getMessage();
+		}
+		return String.format("%02d:%02d", t.getHour(), t.getMinute() );
+	}
+
 
 	public void changeELEMcoord(int i, int x, int y) {
 		ELEMs[i].x = x;
@@ -751,6 +920,26 @@ class ImageElements {
 		} else {
 			w = img.getWidth();
 			h = img.getHeight();
+		}
+	}
+}
+
+class TextElements {
+	int x;
+	int y;
+	int s;
+	String fn;
+	String txt;
+	public TextElements(String ctx, int _x, int _y, int _s) {
+		txt = ctx;
+		x = _x;
+		y = _y;
+		fn = null;
+		s = _s;
+		if(x == 0 && y == 0 && s == 0) {
+			x = 10;
+			y = 10;
+			s = 24;
 		}
 	}
 }
